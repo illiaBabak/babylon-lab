@@ -6,10 +6,20 @@ import {
   Vector3,
   HemisphericLight,
   MeshBuilder,
+  Color4,
+  Mesh,
 } from "@babylonjs/core";
+import { Shape } from "src/types";
 
-export const BabylonCanvas = (): JSX.Element => {
+type Props = {
+  shape: Shape;
+};
+
+export const BabylonCanvas = ({ shape }: Props): JSX.Element => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const sceneRef = useRef<Scene | null>(null);
+  const currentMeshRef = useRef<Mesh | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -18,7 +28,10 @@ export const BabylonCanvas = (): JSX.Element => {
 
     const engine = new Engine(canvas);
 
-    const scene = new Scene(engine);
+    sceneRef.current = new Scene(engine);
+
+    const scene = sceneRef.current;
+    scene.clearColor = new Color4(0.2, 0.2, 0.2, 0.9);
 
     const camera = new ArcRotateCamera(
       "camera",
@@ -31,8 +44,6 @@ export const BabylonCanvas = (): JSX.Element => {
     camera.attachControl(canvas, true);
 
     new HemisphericLight("light", new Vector3(0, 1, 0), scene);
-
-    MeshBuilder.CreateBox("box", { size: 1.2 }, scene);
 
     engine.runRenderLoop(() => {
       scene.render();
@@ -48,11 +59,51 @@ export const BabylonCanvas = (): JSX.Element => {
     };
   }, []);
 
+  useEffect(() => {
+    const scene = sceneRef.current;
+
+    switch (shape) {
+      case "Box":
+        currentMeshRef.current = MeshBuilder.CreateBox(
+          shape,
+          { size: 1.5 },
+          scene
+        );
+        break;
+
+      case "Sphere":
+        currentMeshRef.current = MeshBuilder.CreateSphere(
+          shape,
+          { segments: 32, diameter: 2 },
+          scene
+        );
+        break;
+
+      case "Cylinder":
+        currentMeshRef.current = MeshBuilder.CreateCylinder(
+          shape,
+          { height: 2, diameter: 2 },
+          scene
+        );
+        break;
+
+      case "Torus":
+        currentMeshRef.current = MeshBuilder.CreateTorus(shape, {
+          thickness: 0.5,
+          diameter: 2,
+        });
+    }
+
+    return () => {
+      currentMeshRef.current?.dispose();
+    };
+  }, [shape]);
+
   return (
     <canvas
-      className="hover:cursor-grab"
+      className="hover:cursor-grab focus:outline-0"
       ref={canvasRef}
-      style={{ width: "100%", height: "100%" }}
+      style={{ width: "100%", height: "calc(100vh - 80px)" }}
     />
   );
 };
