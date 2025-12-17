@@ -6,8 +6,8 @@ import {
   Vector3,
   HemisphericLight,
   MeshBuilder,
-  Color4,
   Mesh,
+  CubeTexture,
 } from "@babylonjs/core";
 import { Shape } from "src/types";
 
@@ -26,18 +26,26 @@ export const BabylonCanvas = ({ shape }: Props): JSX.Element => {
 
     if (!canvas) return;
 
+    if (sceneRef.current) return;
+
     const engine = new Engine(canvas);
 
     sceneRef.current = new Scene(engine);
 
     const scene = sceneRef.current;
-    scene.clearColor = new Color4(0.2, 0.2, 0.2, 0.9);
+
+    scene.environmentTexture = CubeTexture.CreateFromPrefilteredData(
+      "/textures/goegap_road_8k.env",
+      scene
+    );
+
+    scene.createDefaultSkybox(scene.environmentTexture, true, 1000);
 
     const camera = new ArcRotateCamera(
       "camera",
       Math.PI / 1.5,
-      Math.PI / 3,
-      5,
+      Math.PI / 2.4,
+      9,
       Vector3.Zero(),
       scene
     );
@@ -56,11 +64,14 @@ export const BabylonCanvas = ({ shape }: Props): JSX.Element => {
       window.removeEventListener("resize", onResize);
       engine.dispose();
       scene.dispose();
+      sceneRef.current = null;
     };
   }, []);
 
   useEffect(() => {
-    const scene = sceneRef.current;
+    const scene = sceneRef.current ?? undefined;
+
+    if (!scene) return;
 
     switch (shape) {
       case "Box":
@@ -88,10 +99,15 @@ export const BabylonCanvas = ({ shape }: Props): JSX.Element => {
         break;
 
       case "Torus":
-        currentMeshRef.current = MeshBuilder.CreateTorus(shape, {
-          thickness: 0.5,
-          diameter: 2,
-        });
+        currentMeshRef.current = MeshBuilder.CreateTorus(
+          shape,
+          {
+            thickness: 0.5,
+            diameter: 2,
+          },
+          scene
+        );
+        break;
     }
 
     return () => {
