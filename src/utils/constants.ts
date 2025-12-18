@@ -1,4 +1,4 @@
-import { Material, Shape } from "src/types";
+import { Environment, Material, Shape } from "src/types";
 
 export const SHAPES: Shape[] = ["Box", "Cylinder", "Sphere", "Torus"] as const;
 
@@ -8,3 +8,5 @@ export const MATERIALS: Material[] = [
   "Glass",
   "Wood",
 ] as const;
+
+export const ENVIRONMENTS: Environment[] = ["Road", "Night", "Studio"] as const;

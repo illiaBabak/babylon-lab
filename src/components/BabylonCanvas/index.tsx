@@ -11,7 +11,7 @@ import {
   Color3,
   Texture,
 } from "@babylonjs/core";
-import { Material, Shape } from "src/types";
+import { Environment, Material, Shape } from "src/types";
 
 const createShapeOnScene = (shape: Shape, scene: Scene): Mesh => {
   switch (shape) {
@@ -44,8 +44,8 @@ const createShapeOnScene = (shape: Shape, scene: Scene): Mesh => {
   }
 };
 
-const getMaterial = (material: Material) => {
-  const materialToSet = new PBRMaterial(material);
+const getMaterial = (material: Material, scene: Scene) => {
+  const materialToSet = new PBRMaterial(material, scene);
 
   switch (material) {
     case "Glass": {
@@ -78,11 +78,15 @@ const getMaterial = (material: Material) => {
 type Props = {
   shape: Shape;
   material: Material;
+  environment: Environment;
 };
 
-export const BabylonCanvas = ({ shape, material }: Props): JSX.Element => {
+export const BabylonCanvas = ({
+  shape,
+  material,
+  environment,
+}: Props): JSX.Element => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
   const sceneRef = useRef<Scene | null>(null);
   const currentMeshRef = useRef<Mesh | null>(null);
 
@@ -96,27 +100,18 @@ export const BabylonCanvas = ({ shape, material }: Props): JSX.Element => {
 
     sceneRef.current = new Scene(engine);
 
-    const scene = sceneRef.current;
-
-    scene.environmentTexture = CubeTexture.CreateFromPrefilteredData(
-      "/textures/goegap_road_8k.env",
-      scene
-    );
-
-    scene.createDefaultSkybox(scene.environmentTexture, true);
-
     const camera = new ArcRotateCamera(
       "camera",
       Math.PI / 1.5,
       Math.PI / 2.4,
       5,
       Vector3.Zero(),
-      scene
+      sceneRef.current
     );
     camera.attachControl(canvas, true);
 
     engine.runRenderLoop(() => {
-      scene.render();
+      sceneRef?.current?.render();
     });
 
     const onResize = () => engine.resize();
@@ -125,7 +120,7 @@ export const BabylonCanvas = ({ shape, material }: Props): JSX.Element => {
     return () => {
       window.removeEventListener("resize", onResize);
       engine.dispose();
-      scene.dispose();
+      sceneRef?.current?.dispose();
       sceneRef.current = null;
     };
   }, []);
@@ -150,8 +145,26 @@ export const BabylonCanvas = ({ shape, material }: Props): JSX.Element => {
 
     if (!currentMesh || !scene) return;
 
-    currentMesh.material = getMaterial(material);
+    currentMesh.material = getMaterial(material, scene);
+
+    return () => {
+      currentMesh?.material?.dispose();
+    };
   }, [material, shape]);
+
+  // on change environment
+  useEffect(() => {
+    const scene = sceneRef.current ?? undefined;
+
+    if (!scene) return;
+
+    scene.environmentTexture = CubeTexture.CreateFromPrefilteredData(
+      `/textures/${environment.toLocaleLowerCase()}.env`,
+      scene
+    );
+
+    scene.createDefaultSkybox(scene.environmentTexture, true);
+  }, [environment]);
 
   return (
     <canvas
