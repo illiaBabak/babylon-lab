@@ -10,6 +10,7 @@ import {
   PBRMaterial,
   Color3,
   Texture,
+  Tools,
 } from "@babylonjs/core";
 import { Environment, Material, Shape } from "src/types";
 
@@ -49,8 +50,9 @@ const getMaterial = (material: Material, scene: Scene) => {
 
   switch (material) {
     case "Glass": {
-      materialToSet.alpha = 0.5;
+      materialToSet.alpha = 0.7;
       materialToSet.roughness = 0.01;
+      materialToSet.transparencyMode = 3;
       break;
     }
 
@@ -75,19 +77,29 @@ const getMaterial = (material: Material, scene: Scene) => {
   return materialToSet;
 };
 
+const takeScreenshot = (engine: Engine, camera: ArcRotateCamera) =>
+  Tools.CreateScreenshot(engine, camera, {
+    width: 1920,
+    height: 1080,
+  });
+
 type Props = {
   shape: Shape;
   material: Material;
   environment: Environment;
+  onTakeScreenshot: (fn: () => void) => void;
 };
 
 export const BabylonCanvas = ({
   shape,
   material,
   environment,
+  onTakeScreenshot,
 }: Props): JSX.Element => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sceneRef = useRef<Scene | null>(null);
+  const engineRef = useRef<Engine | null>(null);
+  const cameraRef = useRef<ArcRotateCamera | null>(null);
   const currentMeshRef = useRef<Mesh | null>(null);
 
   //initalize effect
@@ -96,11 +108,10 @@ export const BabylonCanvas = ({
 
     if (!canvas || sceneRef.current) return;
 
-    const engine = new Engine(canvas);
+    engineRef.current = new Engine(canvas, true);
+    sceneRef.current = new Scene(engineRef.current);
 
-    sceneRef.current = new Scene(engine);
-
-    const camera = new ArcRotateCamera(
+    cameraRef.current = new ArcRotateCamera(
       "camera",
       Math.PI / 1.5,
       Math.PI / 2.4,
@@ -108,20 +119,22 @@ export const BabylonCanvas = ({
       Vector3.Zero(),
       sceneRef.current
     );
-    camera.attachControl(canvas, true);
+    cameraRef.current.attachControl(canvas, true);
 
-    engine.runRenderLoop(() => {
+    engineRef.current.runRenderLoop(() => {
       sceneRef?.current?.render();
     });
 
-    const onResize = () => engine.resize();
+    const onResize = () => engineRef?.current?.resize();
     window.addEventListener("resize", onResize);
 
     return () => {
       window.removeEventListener("resize", onResize);
-      engine.dispose();
+      engineRef?.current?.dispose();
       sceneRef?.current?.dispose();
       sceneRef.current = null;
+      engineRef.current = null;
+      cameraRef.current = null;
     };
   }, []);
 
@@ -166,11 +179,20 @@ export const BabylonCanvas = ({
     scene.createDefaultSkybox(scene.environmentTexture, true);
   }, [environment]);
 
+  useEffect(() => {
+    const engine = engineRef.current;
+    const camera = cameraRef.current;
+
+    if (!engine || !camera) return;
+
+    onTakeScreenshot(() => takeScreenshot(engine, camera));
+  }, [onTakeScreenshot]);
+
   return (
     <canvas
       className="hover:cursor-grab focus:outline-0"
       ref={canvasRef}
-      style={{ width: "100%", height: "calc(100vh - 80px)" }}
+      style={{ width: "100%", height: "100vh" }}
     />
   );
 };

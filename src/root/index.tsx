@@ -1,4 +1,4 @@
-import { JSX, useState } from "react";
+import { JSX, useRef, useState } from "react";
 import { BabylonCanvas } from "src/components/BabylonCanvas";
 import { Dropdown } from "src/components/Dropdown";
 import { Environment, Material, Shape } from "src/types";
@@ -9,9 +9,11 @@ export const App = (): JSX.Element => {
   const [material, setMaterial] = useState<Material>("None");
   const [environment, setEnvironment] = useState<Environment>("Road");
 
+  const screenshotRef = useRef<() => void>(() => {});
+
   return (
     <div className="flex flex-col bg-gray-100">
-      <div className="flex flex-row w-full bg-zinc-700 p-2 text-white px-5 h-[80px]">
+      <div className="flex fixed flex-row w-full p-2 text-white px-5 h-[80px] border border-white/20 bg-white/10 backdrop-blur-md shadow-lg">
         <div className="flex flex-row items-center justify-center">
           <p className="mr-3 items-center">Shape: </p>
           <Dropdown
@@ -38,11 +40,21 @@ export const App = (): JSX.Element => {
             setSelectedOption={(option) => setEnvironment(option)}
           />
         </div>
+
+        <button
+          className="ml-auto px-6 py-2.5 border cursor-pointer border-white/20 bg-white/10 backdrop-blur-md shadow-lg text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out"
+          onClick={() => screenshotRef.current()}
+        >
+          Take screen
+        </button>
       </div>
       <BabylonCanvas
         shape={shape}
         material={material}
         environment={environment}
+        onTakeScreenshot={(fn) => {
+          screenshotRef.current = fn;
+        }}
       />
     </div>
   );
