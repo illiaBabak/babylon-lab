@@ -4,29 +4,93 @@ import {
   Scene,
   ArcRotateCamera,
   Vector3,
-  HemisphericLight,
   MeshBuilder,
   Mesh,
   CubeTexture,
+  PBRMaterial,
+  Color3,
+  Texture,
 } from "@babylonjs/core";
-import { Shape } from "src/types";
+import { Material, Shape } from "src/types";
+
+const createShapeOnScene = (shape: Shape, scene: Scene): Mesh => {
+  switch (shape) {
+    case "Box":
+      return MeshBuilder.CreateBox(shape, { size: 1.5 }, scene);
+
+    case "Sphere":
+      return MeshBuilder.CreateSphere(
+        shape,
+        { segments: 32, diameter: 2 },
+        scene
+      );
+
+    case "Cylinder":
+      return MeshBuilder.CreateCylinder(
+        shape,
+        { height: 2, diameter: 2 },
+        scene
+      );
+
+    case "Torus":
+      return MeshBuilder.CreateTorus(
+        shape,
+        {
+          thickness: 0.7,
+          diameter: 3,
+        },
+        scene
+      );
+  }
+};
+
+const getMaterial = (material: Material) => {
+  const materialToSet = new PBRMaterial(material);
+
+  switch (material) {
+    case "Glass": {
+      materialToSet.alpha = 0.5;
+      materialToSet.roughness = 0.01;
+      break;
+    }
+
+    case "Metal": {
+      materialToSet.albedoColor = new Color3(0.8, 0.8, 0.85);
+      materialToSet.metallic = 1.0;
+      materialToSet.roughness = 0.15;
+      break;
+    }
+
+    case "Wood": {
+      materialToSet.albedoTexture = new Texture("/textures/wood-diff.jpg");
+      materialToSet.metallic = 0.0;
+      break;
+    }
+
+    default: {
+      materialToSet.roughness = 1;
+    }
+  }
+
+  return materialToSet;
+};
 
 type Props = {
   shape: Shape;
+  material: Material;
 };
 
-export const BabylonCanvas = ({ shape }: Props): JSX.Element => {
+export const BabylonCanvas = ({ shape, material }: Props): JSX.Element => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const sceneRef = useRef<Scene | null>(null);
   const currentMeshRef = useRef<Mesh | null>(null);
 
+  //initalize effect
   useEffect(() => {
     const canvas = canvasRef.current;
 
-    if (!canvas) return;
-
-    if (sceneRef.current) return;
+    if (!canvas || sceneRef.current) return;
 
     const engine = new Engine(canvas);
 
@@ -39,19 +103,17 @@ export const BabylonCanvas = ({ shape }: Props): JSX.Element => {
       scene
     );
 
-    scene.createDefaultSkybox(scene.environmentTexture, true, 1000);
+    scene.createDefaultSkybox(scene.environmentTexture, true);
 
     const camera = new ArcRotateCamera(
       "camera",
       Math.PI / 1.5,
       Math.PI / 2.4,
-      9,
+      5,
       Vector3.Zero(),
       scene
     );
     camera.attachControl(canvas, true);
-
-    new HemisphericLight("light", new Vector3(0, 1, 0), scene);
 
     engine.runRenderLoop(() => {
       scene.render();
@@ -68,52 +130,28 @@ export const BabylonCanvas = ({ shape }: Props): JSX.Element => {
     };
   }, []);
 
+  // on change shape
   useEffect(() => {
     const scene = sceneRef.current ?? undefined;
 
     if (!scene) return;
 
-    switch (shape) {
-      case "Box":
-        currentMeshRef.current = MeshBuilder.CreateBox(
-          shape,
-          { size: 1.5 },
-          scene
-        );
-        break;
-
-      case "Sphere":
-        currentMeshRef.current = MeshBuilder.CreateSphere(
-          shape,
-          { segments: 32, diameter: 2 },
-          scene
-        );
-        break;
-
-      case "Cylinder":
-        currentMeshRef.current = MeshBuilder.CreateCylinder(
-          shape,
-          { height: 2, diameter: 2 },
-          scene
-        );
-        break;
-
-      case "Torus":
-        currentMeshRef.current = MeshBuilder.CreateTorus(
-          shape,
-          {
-            thickness: 0.5,
-            diameter: 2,
-          },
-          scene
-        );
-        break;
-    }
+    currentMeshRef.current = createShapeOnScene(shape, scene);
 
     return () => {
       currentMeshRef.current?.dispose();
     };
   }, [shape]);
+
+  // on change material
+  useEffect(() => {
+    const scene = sceneRef.current ?? undefined;
+    const currentMesh = currentMeshRef.current;
+
+    if (!currentMesh || !scene) return;
+
+    currentMesh.material = getMaterial(material);
+  }, [material, shape]);
 
   return (
     <canvas
