@@ -29,7 +29,7 @@ export const App = (): JSX.Element => {
 
   return (
     <div className="flex flex-col bg-gray-100">
-      <div className="flex fixed items-center flex-row w-full p-2 text-white px-5 h-[80px] border border-white/20 bg-white/10 backdrop-blur-md shadow-lg">
+      <div className="overflow-x-auto flex fixed items-center flex-row flex-wrap w-full p-2 text-white px-2 md:px-5 h-auto md:h-[80px] gap-2 md:gap-0 border border-white/20 bg-white/10 backdrop-blur-md shadow-lg">
         <input
           ref={inputFileRef}
           type="file"
@@ -46,7 +46,7 @@ export const App = (): JSX.Element => {
           />
         </div>
 
-        <div className="flex flex-row items-center justify-center ms-6">
+        <div className="flex flex-row items-center justify-center ms-0 md:ms-6">
           <p className="mr-3 items-center">Material: </p>
           <Dropdown
             options={MATERIALS}
@@ -55,7 +55,7 @@ export const App = (): JSX.Element => {
           />
         </div>
 
-        <div className="flex flex-row items-center justify-center ms-6">
+        <div className="flex flex-row items-center justify-center ms-0 md:ms-6">
           <p className="mr-3 items-center">Environment: </p>
           <Dropdown
             options={ENVIRONMENTS}
@@ -65,14 +65,14 @@ export const App = (): JSX.Element => {
         </div>
 
         <button
-          className="px-1 h-[48px] ms-5 border cursor-pointer border-white/20 bg-white/10 backdrop-blur-md shadow-lg text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out"
+          className="px-2 md:px-1 h-[40px] md:h-[48px] ms-0 md:ms-5 text-sm md:text-base border cursor-pointer border-white/20 bg-white/10 backdrop-blur-md shadow-lg text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out"
           onClick={() => inputFileRef?.current?.click()}
         >
           Add own model
         </button>
 
         <button
-          className="ml-auto px-6 py-2.5 border cursor-pointer border-white/20 bg-white/10 backdrop-blur-md shadow-lg text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out"
+          className="ml-auto md:ml-auto px-3 md:px-6 py-1.5 md:py-2.5 text-sm md:text-base border cursor-pointer border-white/20 bg-white/10 backdrop-blur-md shadow-lg text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out"
           onClick={() => screenshotRef.current()}
         >
           Take screen
