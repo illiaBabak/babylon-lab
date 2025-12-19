@@ -5,43 +5,55 @@ import {
   ArcRotateCamera,
   Vector3,
   MeshBuilder,
-  Mesh,
   CubeTexture,
   PBRMaterial,
   Color3,
   Texture,
   Tools,
+  ImportMeshAsync,
+  AbstractMesh,
 } from "@babylonjs/core";
 import { Environment, Material, Shape } from "src/types";
+import { isShape } from "src/utils/guards";
+import "@babylonjs/loaders";
 
-const createShapeOnScene = (shape: Shape, scene: Scene): Mesh => {
+const importModuleToScene = async (
+  module: File,
+  scene: Scene
+): Promise<AbstractMesh[]> => {
+  const res = await ImportMeshAsync(module, scene, {
+    pluginExtension: ".obj",
+  });
+
+  return res.meshes.filter((mesh) => mesh.getTotalVertices() > 0);
+};
+
+const createShapeOnScene = (shape: Shape, scene: Scene): AbstractMesh[] => {
   switch (shape) {
     case "Box":
-      return MeshBuilder.CreateBox(shape, { size: 1.5 }, scene);
+      return [MeshBuilder.CreateBox(shape, { size: 1.5 }, scene)];
 
     case "Sphere":
-      return MeshBuilder.CreateSphere(
-        shape,
-        { segments: 32, diameter: 2 },
-        scene
-      );
+      return [
+        MeshBuilder.CreateSphere(shape, { segments: 32, diameter: 2 }, scene),
+      ];
 
     case "Cylinder":
-      return MeshBuilder.CreateCylinder(
-        shape,
-        { height: 2, diameter: 2 },
-        scene
-      );
+      return [
+        MeshBuilder.CreateCylinder(shape, { height: 2, diameter: 2 }, scene),
+      ];
 
     case "Torus":
-      return MeshBuilder.CreateTorus(
-        shape,
-        {
-          thickness: 0.7,
-          diameter: 3,
-        },
-        scene
-      );
+      return [
+        MeshBuilder.CreateTorus(
+          shape,
+          {
+            thickness: 0.7,
+            diameter: 3,
+          },
+          scene
+        ),
+      ];
   }
 };
 
@@ -84,23 +96,25 @@ const takeScreenshot = (engine: Engine, camera: ArcRotateCamera) =>
   });
 
 type Props = {
-  shape: Shape;
+  currentShapeName: Shape | string;
   material: Material;
   environment: Environment;
   onTakeScreenshot: (fn: () => void) => void;
+  models: File[];
 };
 
 export const BabylonCanvas = ({
-  shape,
+  currentShapeName,
   material,
   environment,
   onTakeScreenshot,
+  models,
 }: Props): JSX.Element => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sceneRef = useRef<Scene | null>(null);
   const engineRef = useRef<Engine | null>(null);
   const cameraRef = useRef<ArcRotateCamera | null>(null);
-  const currentMeshRef = useRef<Mesh | null>(null);
+  const currentMeshesRef = useRef<AbstractMesh[] | null>(null);
 
   //initalize effect
   useEffect(() => {
@@ -140,30 +154,38 @@ export const BabylonCanvas = ({
 
   // on change shape
   useEffect(() => {
-    const scene = sceneRef.current ?? undefined;
+    const asyncWrapper = async () => {
+      const scene = sceneRef.current ?? undefined;
 
-    if (!scene) return;
+      if (!scene) return;
 
-    currentMeshRef.current = createShapeOnScene(shape, scene);
+      // if it doesn't built-in shape - use file instead to load model
+      const isClassicShape = isShape(currentShapeName);
+
+      if (isClassicShape) {
+        currentMeshesRef.current = createShapeOnScene(currentShapeName, scene);
+      } else {
+        const file =
+          models.find((model) => model.name === currentShapeName) ??
+          new File([], "empty.obj");
+
+        currentMeshesRef.current = await importModuleToScene(file, scene);
+      }
+
+      const mat = getMaterial(material, scene);
+
+      currentMeshesRef.current.forEach((m) => {
+        m.material?.dispose();
+        m.material = mat;
+      });
+    };
+
+    asyncWrapper();
 
     return () => {
-      currentMeshRef.current?.dispose();
+      currentMeshesRef.current?.forEach((m) => m.dispose());
     };
-  }, [shape]);
-
-  // on change material
-  useEffect(() => {
-    const scene = sceneRef.current ?? undefined;
-    const currentMesh = currentMeshRef.current;
-
-    if (!currentMesh || !scene) return;
-
-    currentMesh.material = getMaterial(material, scene);
-
-    return () => {
-      currentMesh?.material?.dispose();
-    };
-  }, [material, shape]);
+  }, [currentShapeName, models, material]);
 
   // on change environment
   useEffect(() => {
@@ -179,6 +201,7 @@ export const BabylonCanvas = ({
     scene.createDefaultSkybox(scene.environmentTexture, true);
   }, [environment]);
 
+  // take screenshot
   useEffect(() => {
     const engine = engineRef.current;
     const camera = cameraRef.current;
