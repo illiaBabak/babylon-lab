@@ -29,7 +29,7 @@ export const App = (): JSX.Element => {
 
   return (
     <div className="flex flex-col bg-gray-100">
-      <div className="overflow-x-auto flex fixed items-center flex-row flex-wrap w-full p-2 text-white px-2 md:px-5 h-auto md:h-[80px] gap-2 md:gap-0 border border-white/20 bg-white/10 backdrop-blur-md shadow-lg">
+      <div className="flex fixed top-0 left-0 right-0 items-center justify-between flex-row flex-wrap w-full p-3 md:p-4 text-white h-auto min-h-[60px] gap-2 md:gap-4 border-b border-white/20 bg-white/10 backdrop-blur-md shadow-lg z-50">
         <input
           ref={inputFileRef}
           type="file"
@@ -37,46 +37,56 @@ export const App = (): JSX.Element => {
           onChange={onFileChange}
         />
 
-        <div className="flex flex-row items-center justify-center">
-          <p className="mr-3 items-center">Shape: </p>
-          <Dropdown
-            options={[...SHAPES, ...newModels.map((file) => file.name)]}
-            selectedOption={currentShapeName}
-            setSelectedOption={(option) => setCurrentShapeName(option)}
-          />
+        <div className="flex flex-row flex-wrap items-center gap-2 md:gap-4">
+          <div className="flex flex-row items-center">
+            <p className="mr-2 text-sm md:text-base whitespace-nowrap">
+              Shape:
+            </p>
+            <Dropdown
+              options={[...SHAPES, ...newModels.map((file) => file.name)]}
+              selectedOption={currentShapeName}
+              setSelectedOption={(option) => setCurrentShapeName(option)}
+            />
+          </div>
+
+          <div className="flex flex-row items-center">
+            <p className="mr-2 text-sm md:text-base whitespace-nowrap">
+              Material:
+            </p>
+            <Dropdown
+              options={MATERIALS}
+              selectedOption={material}
+              setSelectedOption={(option) => setMaterial(option)}
+            />
+          </div>
+
+          <div className="flex flex-row items-center">
+            <p className="mr-2 text-sm md:text-base whitespace-nowrap">
+              Environment:
+            </p>
+            <Dropdown
+              options={ENVIRONMENTS}
+              selectedOption={environment}
+              setSelectedOption={(option) => setEnvironment(option)}
+            />
+          </div>
         </div>
 
-        <div className="flex flex-row items-center justify-center ms-0 md:ms-6">
-          <p className="mr-3 items-center">Material: </p>
-          <Dropdown
-            options={MATERIALS}
-            selectedOption={material}
-            setSelectedOption={(option) => setMaterial(option)}
-          />
+        <div className="flex flex-row items-center gap-2 md:gap-3">
+          <button
+            className="px-3 md:px-4 h-[36px] md:h-[48px] text-xs md:text-base whitespace-nowrap border cursor-pointer border-white/20 bg-white/10 backdrop-blur-md shadow-lg text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out"
+            onClick={() => inputFileRef?.current?.click()}
+          >
+            Add own model
+          </button>
+
+          <button
+            className="px-3 md:px-6 h-[36px] md:h-[48px] text-xs md:text-base whitespace-nowrap border cursor-pointer border-white/20 bg-white/10 backdrop-blur-md shadow-lg text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out"
+            onClick={() => screenshotRef.current()}
+          >
+            Take screen
+          </button>
         </div>
-
-        <div className="flex flex-row items-center justify-center ms-0 md:ms-6">
-          <p className="mr-3 items-center">Environment: </p>
-          <Dropdown
-            options={ENVIRONMENTS}
-            selectedOption={environment}
-            setSelectedOption={(option) => setEnvironment(option)}
-          />
-        </div>
-
-        <button
-          className="px-2 md:px-1 h-[40px] md:h-[48px] ms-0 md:ms-5 text-sm md:text-base border cursor-pointer border-white/20 bg-white/10 backdrop-blur-md shadow-lg text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out"
-          onClick={() => inputFileRef?.current?.click()}
-        >
-          Add own model
-        </button>
-
-        <button
-          className="ml-auto md:ml-auto px-3 md:px-6 py-1.5 md:py-2.5 text-sm md:text-base border cursor-pointer border-white/20 bg-white/10 backdrop-blur-md shadow-lg text-white font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-in-out"
-          onClick={() => screenshotRef.current()}
-        >
-          Take screen
-        </button>
       </div>
       <BabylonCanvas
         currentShapeName={currentShapeName}
