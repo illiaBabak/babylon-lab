@@ -1,4 +1,4 @@
-import { JSX, useEffect, useRef } from "react";
+import { JSX, useEffect, useRef, useState } from "react";
 import {
   Engine,
   Scene,
@@ -12,48 +12,76 @@ import {
   Tools,
   ImportMeshAsync,
   AbstractMesh,
+  Color4,
+  ShadowGenerator,
+  FreeCamera,
+  PointLight,
+  HemisphericLight,
+  StandardMaterial,
 } from "@babylonjs/core";
 import { Environment, Material, Shape } from "src/types";
 import { isShape } from "src/utils/guards";
 import "@babylonjs/loaders";
+import { GridMaterial } from "@babylonjs/materials";
+
+const TARGET_HEIGHT = 2;
 
 const importModuleToScene = async (
   module: File,
   scene: Scene
-): Promise<AbstractMesh[]> => {
+): Promise<AbstractMesh | null> => {
   const res = await ImportMeshAsync(module, scene, {
     pluginExtension: ".obj",
   });
 
-  return res.meshes.filter((mesh) => mesh.getTotalVertices() > 0);
+  const mesh = res.meshes.find((mesh) => mesh.getTotalVertices() > 0);
+
+  if (!mesh) return null;
+
+  mesh.computeWorldMatrix(true);
+
+  const { min, max } = mesh.getHierarchyBoundingVectors(true);
+  const height = max.y - min.y;
+
+  const scale = TARGET_HEIGHT / height;
+
+  res.meshes.forEach((m) => {
+    m.scaling = new Vector3(scale, scale, scale);
+  });
+
+  mesh.computeWorldMatrix(true);
+
+  return mesh;
 };
 
-const createShapeOnScene = (shape: Shape, scene: Scene): AbstractMesh[] => {
+const createShapeOnScene = (shape: Shape, scene: Scene): AbstractMesh => {
   switch (shape) {
     case "Box":
-      return [MeshBuilder.CreateBox(shape, { size: 1.5 }, scene)];
+      return MeshBuilder.CreateBox(shape, { size: 1.5 }, scene);
 
     case "Sphere":
-      return [
-        MeshBuilder.CreateSphere(shape, { segments: 32, diameter: 2 }, scene),
-      ];
+      return MeshBuilder.CreateSphere(
+        shape,
+        { segments: 32, diameter: 2 },
+        scene
+      );
 
     case "Cylinder":
-      return [
-        MeshBuilder.CreateCylinder(shape, { height: 2, diameter: 2 }, scene),
-      ];
+      return MeshBuilder.CreateCylinder(
+        shape,
+        { height: 2, diameter: 2 },
+        scene
+      );
 
     case "Torus":
-      return [
-        MeshBuilder.CreateTorus(
-          shape,
-          {
-            thickness: 0.7,
-            diameter: 3,
-          },
-          scene
-        ),
-      ];
+      return MeshBuilder.CreateTorus(
+        shape,
+        {
+          thickness: 0.7,
+          diameter: 3,
+        },
+        scene
+      );
   }
 };
 
@@ -81,15 +109,188 @@ const getMaterial = (material: Material, scene: Scene) => {
       break;
     }
 
-    default: {
+    default:
       materialToSet.roughness = 1;
-    }
   }
 
   return materialToSet;
 };
 
-const takeScreenshot = (engine: Engine, camera: ArcRotateCamera) =>
+const changeEnvironment = (
+  environment: Environment,
+  scene: Scene
+): {
+  shadowGenerator: ShadowGenerator | null;
+  camera: ArcRotateCamera | FreeCamera;
+} => {
+  scene.environmentTexture = null;
+
+  if (environment === "None") {
+    const ground = MeshBuilder.CreateGround(
+      "groundBase",
+      { width: 100, height: 100 },
+      scene
+    );
+    ground.position.y = -0.8;
+    ground.receiveShadows = true;
+
+    const groundMat = new StandardMaterial("baseMat", scene);
+    groundMat.diffuseColor = new Color3(0.75, 0.75, 0.75);
+    groundMat.specularColor = Color3.Black();
+    ground.material = groundMat;
+
+    const groundGrid = MeshBuilder.CreateGround(
+      "groundGrid",
+      { width: 100, height: 100 },
+      scene
+    );
+    groundGrid.position.y = -0.79;
+    groundGrid.receiveShadows = false;
+
+    const gridMat = new GridMaterial("gridMat", scene);
+    gridMat.gridRatio = 1;
+    gridMat.majorUnitFrequency = 5;
+    gridMat.minorUnitVisibility = 0.35;
+    gridMat.mainColor = new Color3(0.75, 0.75, 0.75);
+    gridMat.lineColor = new Color3(0.3, 0.3, 0.3);
+    gridMat.opacity = 0.8;
+    gridMat.backFaceCulling = false;
+
+    groundGrid.material = gridMat;
+
+    scene.clearColor = new Color4(0.25, 0.25, 0.25, 1);
+
+    const hemi = new HemisphericLight("hemi", new Vector3(0, 1, 0), scene);
+    hemi.intensity = 0.2;
+
+    const light = new PointLight("light", new Vector3(3, 2, 1), scene);
+    light.intensity = 3;
+    light.range = 80;
+    light.radius = 3;
+
+    const shadowGenerator = new ShadowGenerator(2048, light);
+    shadowGenerator.usePercentageCloserFiltering = true;
+    shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_HIGH;
+    shadowGenerator.setDarkness(0.2);
+
+    const camera = new ArcRotateCamera(
+      "camera",
+      Math.PI / 1.5,
+      Math.PI / 2.4,
+      5,
+      Vector3.Zero(),
+      scene
+    );
+
+    return { shadowGenerator, camera };
+  } else if (environment === "Room") {
+    const ground = MeshBuilder.CreateGround(
+      "groundBase",
+      { width: 15, height: 10 },
+      scene
+    );
+    ground.position.y = -0.8;
+    ground.receiveShadows = true;
+
+    const floor = MeshBuilder.CreateGround(
+      "floor",
+      { width: 15, height: 10 },
+      scene
+    );
+    floor.position.y = 4.2;
+    floor.rotation = new Vector3(0, 0, Math.PI);
+    floor.receiveShadows = true;
+
+    const backWall = MeshBuilder.CreateGround(
+      "back-wall",
+      { width: 15, height: 5 },
+      scene
+    );
+    backWall.position.y = 1.7;
+    backWall.position.z = -2.7;
+    backWall.rotation = new Vector3(Math.PI / 2, 0, 0);
+    backWall.receiveShadows = true;
+
+    const leftWall = MeshBuilder.CreateGround(
+      "left-wall",
+      { width: 8, height: 5 },
+      scene
+    );
+    leftWall.position.y = 1.7;
+    leftWall.position.x = 7.5;
+    leftWall.position.z = 1;
+    leftWall.rotation = new Vector3(Math.PI / 2, 0, Math.PI / 2);
+    leftWall.receiveShadows = true;
+
+    const rightWall = MeshBuilder.CreateGround(
+      "right-wall",
+      { width: 8, height: 5 },
+      scene
+    );
+    rightWall.position.y = 1.7;
+    rightWall.position.x = -7.5;
+    rightWall.position.z = 1;
+    rightWall.rotation = new Vector3(Math.PI / 2, 0, -(Math.PI / 2));
+    rightWall.receiveShadows = true;
+
+    const wallMat = new StandardMaterial("baseMat", scene);
+    wallMat.diffuseColor = new Color3(0.75, 0.75, 0.75);
+    wallMat.specularColor = Color3.Black();
+
+    ground.material = wallMat;
+    floor.material = wallMat;
+    backWall.material = wallMat;
+    leftWall.material = wallMat;
+    rightWall.material = wallMat;
+
+    const camera = new FreeCamera("camera", new Vector3(0, 3.5, 18), scene);
+    camera.setTarget(new Vector3(0, 1.2, 0));
+    camera.inputs.clear();
+
+    const hemi = new HemisphericLight("hemi", new Vector3(0, 1, 0), scene);
+    hemi.intensity = 0.15;
+
+    // Point light that follows camera X position but is above and closer to object
+    const shadowLight = new PointLight(
+      "shadow-light",
+      new Vector3(camera.position.x, 5, 8),
+      scene
+    );
+    shadowLight.intensity = 2;
+    shadowLight.range = 40;
+
+    const shadowGenerator = new ShadowGenerator(2048, shadowLight);
+    shadowGenerator.usePercentageCloserFiltering = true;
+    shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_HIGH;
+    shadowGenerator.setDarkness(0.4);
+
+    scene.onBeforeRenderObservable.add(
+      () => (shadowLight.position.x = camera.position.x)
+    );
+
+    return { shadowGenerator, camera };
+  } else {
+    scene.environmentTexture = CubeTexture.CreateFromPrefilteredData(
+      `/textures/${environment.toLocaleLowerCase()}.env`,
+      scene
+    );
+
+    scene.createDefaultSkybox(scene.environmentTexture, true);
+
+    const camera = new ArcRotateCamera(
+      "camera",
+      Math.PI / 1.5,
+      Math.PI / 2.4,
+      5,
+      Vector3.Zero(),
+      scene
+    );
+
+    return { shadowGenerator: null, camera };
+  }
+};
+
+const takeScreenshot = (engine: Engine, camera: ArcRotateCamera | FreeCamera) =>
   Tools.CreateScreenshot(engine, camera, {
     width: 1920,
     height: 1080,
@@ -113,27 +314,16 @@ export const BabylonCanvas = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sceneRef = useRef<Scene | null>(null);
   const engineRef = useRef<Engine | null>(null);
-  const cameraRef = useRef<ArcRotateCamera | null>(null);
-  const currentMeshesRef = useRef<AbstractMesh[] | null>(null);
+  const cameraRef = useRef<ArcRotateCamera | FreeCamera | null>(null);
+  const currentMeshesRef = useRef<AbstractMesh | null>(null);
+  const shadowGenRef = useRef<ShadowGenerator | null>(null);
+  const [cameraXPosition, setCameraXPosition] = useState(0);
 
   //initalize effect
   useEffect(() => {
-    const canvas = canvasRef.current;
+    if (!canvasRef.current || sceneRef.current) return;
 
-    if (!canvas || sceneRef.current) return;
-
-    engineRef.current = new Engine(canvas, true);
-    sceneRef.current = new Scene(engineRef.current);
-
-    cameraRef.current = new ArcRotateCamera(
-      "camera",
-      Math.PI / 1.5,
-      Math.PI / 2.4,
-      5,
-      Vector3.Zero(),
-      sceneRef.current
-    );
-    cameraRef.current.attachControl(canvas, true);
+    engineRef.current = new Engine(canvasRef.current, true);
 
     engineRef.current.runRenderLoop(() => {
       sceneRef?.current?.render();
@@ -145,12 +335,33 @@ export const BabylonCanvas = ({
     return () => {
       window.removeEventListener("resize", onResize);
       engineRef?.current?.dispose();
-      sceneRef?.current?.dispose();
-      sceneRef.current = null;
+
       engineRef.current = null;
       cameraRef.current = null;
     };
   }, []);
+
+  // on change environment
+  useEffect(() => {
+    if (!engineRef.current) return;
+
+    sceneRef.current = new Scene(engineRef.current);
+
+    const { shadowGenerator, camera } = changeEnvironment(
+      environment,
+      sceneRef.current
+    );
+
+    cameraRef.current = camera;
+    cameraRef.current.attachControl(canvasRef.current, true);
+
+    shadowGenRef.current = shadowGenerator;
+
+    return () => {
+      sceneRef?.current?.dispose();
+      sceneRef.current = null;
+    };
+  }, [environment]);
 
   // on change shape
   useEffect(() => {
@@ -163,7 +374,10 @@ export const BabylonCanvas = ({
       const isClassicShape = isShape(currentShapeName);
 
       if (isClassicShape) {
-        currentMeshesRef.current = createShapeOnScene(currentShapeName, scene);
+        const shape = createShapeOnScene(currentShapeName, scene);
+        const minY = shape.getBoundingInfo().boundingBox.minimumWorld.y;
+        shape.position.y = -0.8 + -minY;
+        currentMeshesRef.current = shape;
       } else {
         const file =
           models.find((model) => model.name === currentShapeName) ??
@@ -174,32 +388,19 @@ export const BabylonCanvas = ({
 
       const mat = getMaterial(material, scene);
 
-      currentMeshesRef.current.forEach((m) => {
-        m.material?.dispose();
-        m.material = mat;
-      });
+      if (!currentMeshesRef.current) return;
+
+      currentMeshesRef?.current?.material?.dispose();
+      currentMeshesRef.current.material = mat;
+      shadowGenRef.current?.addShadowCaster(currentMeshesRef?.current);
     };
 
     asyncWrapper();
 
     return () => {
-      currentMeshesRef.current?.forEach((m) => m.dispose());
+      currentMeshesRef.current?.dispose();
     };
-  }, [currentShapeName, models, material]);
-
-  // on change environment
-  useEffect(() => {
-    const scene = sceneRef.current ?? undefined;
-
-    if (!scene) return;
-
-    scene.environmentTexture = CubeTexture.CreateFromPrefilteredData(
-      `/textures/${environment.toLocaleLowerCase()}.env`,
-      scene
-    );
-
-    scene.createDefaultSkybox(scene.environmentTexture, true);
-  }, [environment]);
+  }, [currentShapeName, models, material, environment]);
 
   // take screenshot
   useEffect(() => {
@@ -211,11 +412,57 @@ export const BabylonCanvas = ({
     onTakeScreenshot(() => takeScreenshot(engine, camera));
   }, [onTakeScreenshot]);
 
+  // update camera position when slider changes (only for Room environment)
+  useEffect(() => {
+    if (environment !== "Room") {
+      setCameraXPosition(0);
+      return;
+    }
+
+    const camera = cameraRef.current;
+    if (!camera) return;
+
+    camera.position.x = cameraXPosition;
+    camera.setTarget(new Vector3(cameraXPosition, 1.2, 0));
+  }, [cameraXPosition, environment]);
+
   return (
-    <canvas
-      className="hover:cursor-grab focus:outline-0"
-      ref={canvasRef}
-      style={{ width: "100%", height: "100vh" }}
-    />
+    <div className="relative" style={{ width: "100%", height: "100vh" }}>
+      <canvas
+        className="hover:cursor-grab focus:outline-0"
+        ref={canvasRef}
+        style={{ width: "100%", height: "100%" }}
+      />
+      {environment === "Room" && (
+        <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-md px-4">
+          <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 shadow-lg">
+            <label className="block text-white text-sm font-semibold mb-2 text-center">
+              Position
+            </label>
+            <input
+              type="range"
+              min="-5"
+              max="5"
+              step="0.1"
+              value={cameraXPosition}
+              onChange={(e) => setCameraXPosition(parseFloat(e.target.value))}
+              className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
+              style={{
+                background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${
+                  ((cameraXPosition + 5) / 10) * 100
+                }%, rgba(255,255,255,0.1) ${
+                  ((cameraXPosition + 5) / 10) * 100
+                }%, rgba(255,255,255,0.1) 100%)`,
+              }}
+            />
+            <div className="flex justify-between text-white text-xs mt-1">
+              <span>Left</span>
+              <span>Center</span>
+              <span>Right</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };

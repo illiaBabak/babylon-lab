@@ -12,6 +12,7 @@
   "dependencies": {
     "@babylonjs/core": "^8.41.2",
     "@babylonjs/loaders": "^8.41.2",
+    "@babylonjs/materials": "^8.45.3",
     "@tailwindcss/postcss": "^4.1.7",
     "motion": "^12.23.22",
     "react": "^19.1.1",

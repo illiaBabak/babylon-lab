@@ -68,9 +68,20 @@ Apply different material types to your 3D objects:
 
 Switch between different environment maps for varied lighting:
 
-- **Road** — outdoor road scene with natural lighting
-- **Night** — nighttime environment with ambient lighting
-- **Studio** — professional studio lighting setup
+- **None** — minimal setup with grid floor and shadow-casting point light
+- **Room** — indoor studio room with walls, ceiling, and interactive camera slider
+- **Road** — outdoor road scene with natural lighting (HDR skybox)
+- **Night** — nighttime environment with ambient lighting (HDR skybox)
+- **Studio** — professional studio lighting setup (HDR skybox)
+
+### 🔦 Shadows & Lighting
+
+Real-time shadow rendering with advanced lighting:
+
+- **Dynamic shadows** — objects cast realistic shadows on floors and walls
+- **Shadow generators** — PCF (Percentage Closer Filtering) for smooth shadow edges
+- **Multiple light sources** — hemispheric ambient light + point/directional lights
+- **Interactive lighting** — in Room mode, light follows camera position for dynamic shadow angles
 
 ### 📦 Custom Models
 
@@ -85,6 +96,8 @@ Switch between different environment maps for varied lighting:
 
 ### 🎛️ Interactive Controls
 
+- **Camera position slider** — in Room mode, slide left/right to move camera and light
+- **Arc rotate camera** — orbit around objects in other environments
 - **Responsive design** — works on desktop, tablet, and mobile
 - **Smooth animations** — polished UI transitions
 - **Real-time updates** — instant visual feedback when changing settings
@@ -140,6 +153,6 @@ public/
 ├── images/              # UI assets
 └── textures/            # Environment maps (.env files)
     ├── road.env
-    ├── Night.env
+    ├── night.env
     └── studio.env
 ```

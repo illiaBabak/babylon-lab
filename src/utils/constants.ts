@@ -9,4 +9,10 @@ export const MATERIALS: Material[] = [
   "Wood",
 ] as const;
 
-export const ENVIRONMENTS: Environment[] = ["Road", "Night", "Studio"] as const;
+export const ENVIRONMENTS: Environment[] = [
+  "None",
+  "Room",
+  "Road",
+  "Night",
+  "Studio",
+] as const;

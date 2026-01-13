@@ -9,7 +9,7 @@ export const App = (): JSX.Element => {
     "Box"
   );
   const [material, setMaterial] = useState<Material>("None");
-  const [environment, setEnvironment] = useState<Environment>("Road");
+  const [environment, setEnvironment] = useState<Environment>("None");
   const [newModels, setNewModels] = useState<File[]>([]);
 
   const screenshotRef = useRef<() => void>(() => {});
