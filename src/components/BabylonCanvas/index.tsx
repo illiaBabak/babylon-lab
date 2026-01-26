@@ -184,85 +184,90 @@ const changeEnvironment = (
 
     return { shadowGenerator, camera };
   } else if (environment === "Room") {
+    const roomWidth = 25;
+    const roomDepth = 20;
+    const roomHeight = 6;
+    const floorY = -0.8;
+    const ceilingY = floorY + roomHeight;
+
     const ground = MeshBuilder.CreateGround(
       "groundBase",
-      { width: 15, height: 10 },
+      { width: roomWidth, height: roomDepth },
       scene
     );
-    ground.position.y = -0.8;
+    ground.position.y = floorY;
     ground.receiveShadows = true;
 
-    const floor = MeshBuilder.CreateGround(
-      "floor",
-      { width: 15, height: 10 },
+    const ceiling = MeshBuilder.CreateGround(
+      "ceiling",
+      { width: roomWidth, height: roomDepth },
       scene
     );
-    floor.position.y = 4.2;
-    floor.rotation = new Vector3(0, 0, Math.PI);
-    floor.receiveShadows = true;
+    ceiling.position.y = ceilingY;
+    ceiling.rotation = new Vector3(Math.PI, 0, 0);
+    ceiling.receiveShadows = true;
 
     const backWall = MeshBuilder.CreateGround(
       "back-wall",
-      { width: 15, height: 5 },
+      { width: roomWidth, height: roomHeight },
       scene
     );
-    backWall.position.y = 1.7;
-    backWall.position.z = -2.7;
+    backWall.position.y = floorY + roomHeight / 2;
+    backWall.position.z = -roomDepth / 2;
     backWall.rotation = new Vector3(Math.PI / 2, 0, 0);
     backWall.receiveShadows = true;
 
     const leftWall = MeshBuilder.CreateGround(
       "left-wall",
-      { width: 8, height: 5 },
+      { width: roomDepth, height: roomHeight },
       scene
     );
-    leftWall.position.y = 1.7;
-    leftWall.position.x = 7.5;
-    leftWall.position.z = 1;
+    leftWall.position.y = floorY + roomHeight / 2;
+    leftWall.position.x = roomWidth / 2;
     leftWall.rotation = new Vector3(Math.PI / 2, 0, Math.PI / 2);
     leftWall.receiveShadows = true;
 
     const rightWall = MeshBuilder.CreateGround(
       "right-wall",
-      { width: 8, height: 5 },
+      { width: roomDepth, height: roomHeight },
       scene
     );
-    rightWall.position.y = 1.7;
-    rightWall.position.x = -7.5;
-    rightWall.position.z = 1;
-    rightWall.rotation = new Vector3(Math.PI / 2, 0, -(Math.PI / 2));
+    rightWall.position.y = floorY + roomHeight / 2;
+    rightWall.position.x = -roomWidth / 2;
+    rightWall.rotation = new Vector3(Math.PI / 2, 0, -Math.PI / 2);
     rightWall.receiveShadows = true;
 
     const wallMat = new StandardMaterial("baseMat", scene);
-    wallMat.diffuseColor = new Color3(0.75, 0.75, 0.75);
+    wallMat.diffuseColor = new Color3(0.85, 0.85, 0.85);
     wallMat.specularColor = Color3.Black();
 
     ground.material = wallMat;
-    floor.material = wallMat;
+    ceiling.material = wallMat;
     backWall.material = wallMat;
     leftWall.material = wallMat;
     rightWall.material = wallMat;
 
-    const camera = new FreeCamera("camera", new Vector3(0, 3.5, 18), scene);
-    camera.setTarget(new Vector3(0, 1.2, 0));
+    // Camera inside the room, looking at center
+    const camera = new FreeCamera("camera", new Vector3(0, 3, 10), scene);
+    camera.setTarget(new Vector3(0, 0.5, 0));
     camera.inputs.clear();
 
     const hemi = new HemisphericLight("hemi", new Vector3(0, 1, 0), scene);
-    hemi.intensity = 0.15;
+    hemi.intensity = 0.1;
 
-    // Point light that follows camera X position but is above and closer to object
+    // Point light above the object
     const shadowLight = new PointLight(
       "shadow-light",
-      new Vector3(camera.position.x, 5, 8),
+      new Vector3(0, 3, 2),
       scene
     );
     shadowLight.intensity = 2;
-    shadowLight.range = 40;
+    shadowLight.range = 20;
 
     const shadowGenerator = new ShadowGenerator(2048, shadowLight);
     shadowGenerator.usePercentageCloserFiltering = true;
     shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_HIGH;
-    shadowGenerator.setDarkness(0.4);
+    shadowGenerator.setDarkness(0.3);
 
     scene.onBeforeRenderObservable.add(
       () => (shadowLight.position.x = camera.position.x)
@@ -423,7 +428,7 @@ export const BabylonCanvas = ({
     if (!camera) return;
 
     camera.position.x = cameraXPosition;
-    camera.setTarget(new Vector3(cameraXPosition, 1.2, 0));
+    camera.setTarget(new Vector3(cameraXPosition, 0.5, 0));
   }, [cameraXPosition, environment]);
 
   return (
@@ -435,8 +440,8 @@ export const BabylonCanvas = ({
       />
       {environment === "Room" && (
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-full max-w-md px-4">
-          <div className="bg-white/10 backdrop-blur-md rounded-lg p-4 border border-white/20 shadow-lg">
-            <label className="block text-white text-sm font-semibold mb-2 text-center">
+          <div className="bg-gray-900/80 backdrop-blur-md rounded-lg p-4 border border-gray-700 shadow-xl">
+            <label className="block text-gray-100 text-sm font-semibold mb-2 text-center">
               Position
             </label>
             <input
@@ -446,16 +451,16 @@ export const BabylonCanvas = ({
               step="0.1"
               value={cameraXPosition}
               onChange={(e) => setCameraXPosition(parseFloat(e.target.value))}
-              className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer slider"
+              className="w-full h-2 rounded-lg appearance-none cursor-pointer"
               style={{
-                background: `linear-gradient(to right, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.3) ${
+                background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${
                   ((cameraXPosition + 5) / 10) * 100
-                }%, rgba(255,255,255,0.1) ${
+                }%, #374151 ${
                   ((cameraXPosition + 5) / 10) * 100
-                }%, rgba(255,255,255,0.1) 100%)`,
+                }%, #374151 100%)`,
               }}
             />
-            <div className="flex justify-between text-white text-xs mt-1">
+            <div className="flex justify-between text-gray-300 text-xs mt-1">
               <span>Left</span>
               <span>Center</span>
               <span>Right</span>
