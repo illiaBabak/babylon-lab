@@ -427,8 +427,17 @@ export const BabylonCanvas = ({
     const camera = cameraRef.current;
     if (!camera) return;
 
-    camera.position.x = cameraXPosition;
-    camera.setTarget(new Vector3(cameraXPosition, 0.5, 0));
+    const maxAngle = Math.PI / 6;
+    const radius = 10;
+
+    const t = cameraXPosition / 5;
+    const angle = t * maxAngle;
+
+    camera.position.x = radius * Math.sin(angle);
+    camera.position.z = radius * Math.cos(angle);
+    camera.position.y = 3;
+
+    camera.setTarget(new Vector3(0, 0.5, 0));
   }, [cameraXPosition, environment]);
 
   return (
